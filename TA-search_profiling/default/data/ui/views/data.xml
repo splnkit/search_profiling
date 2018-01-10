@@ -1,0 +1,99 @@
+<form>
+  <fieldset submitButton="false"></fieldset>
+  <row>
+    <panel>
+      <single>
+        <title>Licensed Ingest Volume (GB)</title>
+        <search>
+          <query>| rest splunk_server=local /services/licenser/pools | rename title AS Pool | search [rest splunk_server=local /services/licenser/groups | search is_active=1 | eval stack_id=stack_ids | fields stack_id] | eval quota=tostring(if(isnull(effective_quota),quota,effective_quota)/(1024*1024*1024)) | table quota</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Today's Ingest</title>
+        <search>
+          <query>index=_internal source=*license_usage* type=Usage 
+| stats sum(b) as b 
+| eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024,2))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table usage</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Average Daily Ingest (Last 7 days)</title>
+        <search>
+          <query>index=_internal source=*license_usage* type=RolloverSummary 
+| timechart span=1d sum(b) AS b | stats avg(b) AS b | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024,2))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table usage</query>
+          <earliest>-7d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Trend</title>
+        <search>
+          <query>index=_internal source=*license_usage* type=RolloverSummary 
+| timechart span=1d max(b) AS usage</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Data Sources</title>
+      <input type="multiselect" token="idx" searchWhenChanged="true">
+        <label>Index</label>
+        <choice value="*">All</choice>
+        <default>*</default>
+        <fieldForLabel>idx</fieldForLabel>
+        <fieldForValue>idx</fieldForValue>
+        <search>
+          <query>| inputlookup list_index_sourcetypes.csv | search idx!=_*| stats count by idx</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <input type="multiselect" token="st" searchWhenChanged="true">
+        <label>Sourcetype(s)</label>
+        <choice value="*">All</choice>
+        <default>*</default>
+        <fieldForLabel>st</fieldForLabel>
+        <fieldForValue>st</fieldForValue>
+        <search>
+          <query>| inputlookup list_index_sourcetypes.csv | stats count by st</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <table>
+        <title>Today's Ingest</title>
+        <search>
+          <query>index=_internal source=*license_usage* type=Usage idx="$idx$" st="$st$"| append [| inputlookup list_index_sourcetypes.csv | search idx="$idx$" st="$st$" | eval b=0 ]|stats sum(b) AS b by st, idx | eventstats sum(b) AS today_total | eval [| rest splunk_server=local /services/licenser/pools | rename title AS Pool | search [rest splunk_server=local /services/licenser/groups | search is_active=1 | eval stack_id=stack_ids | fields stack_id] | eval search="quota="+tostring(if(isnull(effective_quota),quota,effective_quota))| table search] | eval perc_license_quota=100*b/quota | eval perc_daily_volume=100*b/today_total | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table st idx usage perc* | sort -perc_daily_volume</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="perc_daily_volume">
+          <colorPalette type="minMidMax" maxColor="#31A35F" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="perc_license_quota">
+          <colorPalette type="list">[#65A637,#6DB7C6,#F7BC38,#F58F39,#D93F3C]</colorPalette>
+          <scale type="threshold">0,30,70,100</scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

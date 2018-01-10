@@ -1,0 +1,5 @@
+User,Role,"allowed_idx","default_idx"
+admin,admin,"_audit _internal _introspection _telemetry becu_dup becu_rf boeing_tp costco_arch costco_intfwd dtna_indexer_hang dtna_mongo dtna_qualys dtna_uf expedia_dc main os tmo_cdr tmo_cdr_test tmo_cluster tmo_psv tmo_search","main os"
+fred,power,"becu_dup becu_rf boeing_tp costco_arch costco_intfwd dtna_indexer_hang dtna_mongo dtna_qualys dtna_uf expedia_dc main os tmo_cdr tmo_cdr_test tmo_cluster tmo_psv tmo_search",main
+fred,user,"becu_dup becu_rf boeing_tp costco_arch costco_intfwd dtna_indexer_hang dtna_mongo dtna_qualys dtna_uf expedia_dc main os tmo_cdr tmo_cdr_test tmo_cluster tmo_psv tmo_search",main
+"splunk-system-user",admin,"_audit _internal _introspection _telemetry becu_dup becu_rf boeing_tp costco_arch costco_intfwd dtna_indexer_hang dtna_mongo dtna_qualys dtna_uf expedia_dc main os tmo_cdr tmo_cdr_test tmo_cluster tmo_psv tmo_search","main os"

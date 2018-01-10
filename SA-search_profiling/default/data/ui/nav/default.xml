@@ -1,0 +1,4 @@
+<nav color="#708794">
+  <view name="data" default="true" label="Data Lense" />
+  <view name="search" />
+</nav>

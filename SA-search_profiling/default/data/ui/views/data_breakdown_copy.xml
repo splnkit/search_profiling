@@ -1,0 +1,133 @@
+<dashboard>
+  <label>Data Breakdown Copy</label>
+  <fieldset submitButton="false">
+    <input type="multiselect" token="idx" searchWhenChanged="true">
+      <label>Index</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <search>
+        <query>| inputlookup list_index_sourcetypes.csv | search index!=_*| stats count by index</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <delimiter> OR </delimiter>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>idx="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="st" searchWhenChanged="true">
+      <label>Sourcetype(s)</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>sourcetype</fieldForLabel>
+      <fieldForValue>sourcetype</fieldForValue>
+      <search>
+        <query>| inputlookup list_index_sourcetypes.csv | rename index AS idx| search NOT idx=_* $idx$| stats count by sourcetype</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <delimiter> </delimiter>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>| rest /servicesNS/-/-/configs/conf-indexes | search NOT title IN(_audit,_introspection,_thefishbucket,_telemetry,firedalerts,provider-family:hadoop,volume:_splunk_summaries,history,_internal) | table title</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Index Info</title>
+      <table>
+        <search>
+          <query>|dbinspect index=tmo_cdr | stats min(startEpoch) AS earliest, max(endEpoch) AS latest, sum(rawSize) AS rawSize, sum(sizeOnDiskMB) AS storageMB, sum(eventCount) AS events</query>
+          <earliest>0</earliest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Sourcetype Info</title>
+      <table>
+        <search>
+          <query>|metadata index=tmo_cdr type=sourcetypes</query>
+          <earliest>0</earliest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Searches</title>
+      <event>
+        <search>
+          <query>index=_audit action=search info=granted search=* NOT search_id=\'ta_* | search "index=tmo_cdr" OR "index=\"tmo_cdr\""</query>
+          <earliest>0</earliest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="list.drilldown">none</option>
+        <option name="list.wrap">1</option>
+        <option name="maxLines">5</option>
+        <option name="raw.drilldown">full</option>
+        <option name="rowNumbers">0</option>
+        <option name="table.drilldown">all</option>
+        <option name="table.sortDirection">asc</option>
+        <option name="table.wrap">1</option>
+        <option name="type">list</option>
+      </event>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Dashboards</title>
+      <table>
+        <search>
+          <query>| rest /servicesNS/-/-/data/ui/views | search isDashboard=1 isVisible=1 | search eai:data="*index=tmo_cdr*" OR "*index=\"tmo_cdr\"*" | table title</query>
+          <earliest>0</earliest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

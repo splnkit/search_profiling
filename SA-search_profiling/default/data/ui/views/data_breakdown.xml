@@ -1,0 +1,157 @@
+<form>
+  <label>Data Breakdown</label>
+  <fieldset submitButton="false">
+    <input type="multiselect" token="idx" searchWhenChanged="true">
+      <label>Index</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <search>
+        <query>| inputlookup list_index_sourcetypes.csv | search index!=_*| stats count by index</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <delimiter> OR </delimiter>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>idx="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="st" searchWhenChanged="true">
+      <label>Sourcetype(s)</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>sourcetype</fieldForLabel>
+      <fieldForValue>sourcetype</fieldForValue>
+      <search>
+        <query>| inputlookup list_index_sourcetypes.csv | rename index AS idx| search NOT idx=_* $idx$| stats count by sourcetype</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <delimiter> OR </delimiter>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>st="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="text" token="filter" searchWhenChanged="true">
+      <label>Search Criteria</label>
+      <default></default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Searches</title>
+      <table>
+        <search>
+          <query>index=summary version=4.0 $idx$ $st$| stats dc(user) AS Users, values(user) AS Usernames, count AS Total_Searches count(eval(search_type="Ad-hoc")) AS AdHoc,count(eval(search_type="Dashboard")) AS Dashboard,count(eval(search_type="Scheduled")) AS Scheduled,  by idx, st | search $idx$ $st$</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="Users">
+          <colorPalette type="minMidMax" maxColor="#31A35F" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="search_count">
+          <colorPalette type="minMidMax" maxColor="#1E93C6" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="Total_Searches">
+          <colorPalette type="minMidMax" maxColor="#1E93C6" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Index Info</title>
+      <table>
+        <search>
+          <query>index=summary version=4.0 $idx$ $st$ NOT search_id=Summary* NOT search_id=ta_* $filter$| eval time_diff=apiEndTime-apiStartTime | eval time_range=case(time_diff&lt;60,time_diff+" secs",time_diff&lt;3600,tostring(round(time_diff/60,2))+" mins",time_diff&lt;86400,tostring(round(time_diff/3600,2))+" hrs",time_diff&lt;96000000,tostring(round(time_diff/86400,2))+" days",1==1,"All-Time") | table _time savedsearch_name search_type time_range data search_string search_id</query>
+          <earliest>0</earliest>
+          <latest></latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Sourcetype Info</title>
+      <table>
+        <search>
+          <query>|metadata index=tmo_cdr type=sourcetypes</query>
+          <earliest>0</earliest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Searches</title>
+      <event>
+        <search>
+          <query>index=_audit action=search info=granted search=* NOT search_id=\'ta_* | search "index=tmo_cdr" OR "index=\"tmo_cdr\""</query>
+          <earliest>0</earliest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="list.drilldown">none</option>
+        <option name="list.wrap">1</option>
+        <option name="maxLines">5</option>
+        <option name="raw.drilldown">full</option>
+        <option name="rowNumbers">0</option>
+        <option name="table.drilldown">all</option>
+        <option name="table.sortDirection">asc</option>
+        <option name="table.wrap">1</option>
+        <option name="type">list</option>
+      </event>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Dashboards</title>
+      <table>
+        <search>
+          <query>| rest /servicesNS/-/-/data/ui/views | search isDashboard=1 isVisible=1 | search eai:data="*index=tmo_cdr*" OR "*index=\"tmo_cdr\"*" | table title</query>
+          <earliest>0</earliest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>
