@@ -1,9 +1,9 @@
 import json
 from urllib import urlencode
-from splunk.rest import simpleRequest
+from splunk import entity
 import splunk.Intersplunk as si
 
-# mvfind(search_indexes, default_indexes)
+SEARCH_PARSER_PATH = 'search'
 
 if __name__ == '__main__':
     try:
@@ -21,23 +21,20 @@ if __name__ == '__main__':
         results,dummyresults,settings = si.getOrganizedResults()
 
         sessionKey = settings.get("sessionKey", None)
-        owner      = settings.get("owner", None)
-        namespace  = settings.get("namespace", None)
+        owner      = "admin"
         
         for result in results:
             if result[macro_field] == "0":
                 continue
             else:
-                search = result.get(search_field,"Frooty Tooty")
-                args = {'output_mode': 'json',
-                        'parse_only': 't',
-                        'q': search}
-                # si.generateErrorResults("Error '%s'. %s" % (search, search_field))
+                search = result.get(search_field,"")
                 try:
-                    r, c = simpleRequest('/search/parser', getargs=args, sessionKey=settings["sessionKey"], raiseAllErrors=True)
-#                    si.generateErrorResults("Error '%r'. %s" % (c, r))
-                    updated_search = json.loads(c).get("normalizedSearch")
-                    result[output_field] = updated_search
+                    output = entity.getEntity(SEARCH_PARSER_PATH, "parser", owner=owner, namespace=result["app"], sessionKey=sessionKey, q=search, parse_only="t", output_mode="json")
+                    c = output.value
+                    updated_search = " | ".join([command["command"]+" "+command["rawargs"] for command in json.loads(c).get("commands")])
+                    if not updated_search.startswith("search"):
+                        updated_search = "| %s" % updated_search
+                    result[output_field] = str(updated_search)
                 except Exception, e:
                     import traceback
                     stack =  traceback.format_exc()

@@ -37,7 +37,7 @@
         <search>
           <!--query>index=_internal source=*license_usage* type=RolloverSummary 
 | timechart span=1d sum(b) AS b | stats avg(b) AS b | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024,2))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table usage</query-->
-<query>index=_internal source=*license_usage* type=Usage 
+          <query>index=_internal source=*license_usage* type=Usage 
 | timechart span=1d sum(b) AS b | stats avg(b) AS b | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024,2))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table usage</query>
           <earliest>-7d@d</earliest>
           <latest>now</latest>
@@ -108,13 +108,21 @@
         </change>
         <default>chart</default>
       </input>
+      <input type="time" token="timerange">
+        <label>Time Range</label>
+        <default>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
       <table depends="$table$">
         <title>Today's Ingest</title>
         <search>
-          <query>index=_internal source=*license_usage* type=Usage $idx$ $st$ | eval idx=if(idx=="default","main",idx)| append [| inputlookup list_index_sourcetypes.csv | rename index AS idx, sourcetype AS st | search idx="$idx$" st="$st$" NOT idx="_*" | eval b=0 ]|stats sum(b) AS b by st, idx | eventstats sum(b) AS today_total | eval [| rest splunk_server=local /services/licenser/pools | rename title AS Pool | search [rest splunk_server=local /services/licenser/groups | search is_active=1 | eval stack_id=stack_ids | fields stack_id] | eval search="quota="+tostring(if(isnull(effective_quota),quota,effective_quota))| table search] | eval perc_license_quota=round(100*b/quota,2) | eval perc_daily_volume=round(100*b/today_total,2) | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table st idx usage perc* | sort -perc_daily_volume | eval search_count=random()%100</query>
-          <earliest>@d</earliest>
-          <latest>now</latest>
+          <query>(index=_internal source=*license_usage* type=Usage) OR (index=search_profiling search_status=granted) $idx$ $st$ | eval idx=if(idx=="default","main",idx)| append [| inputlookup list_index_sourcetypes.csv | rename index AS idx, sourcetype AS st | search idx="$idx$" st="$st$" NOT idx="_*" | eval b=0 ]|stats sum(b) AS b, dc(search_id) AS search_count by st, idx | eventstats sum(b) AS today_total | eval [| rest splunk_server=local /services/licenser/pools | rename title AS Pool | search [rest splunk_server=local /services/licenser/groups | search is_active=1 | eval stack_id=stack_ids | fields stack_id] | eval search="quota="+tostring(if(isnull(effective_quota),quota,effective_quota))| table search] | eval perc_license_quota=round(100*b/quota,2) | search b&gt;0 NOT idx=_* | eval perc_daily_volume=round(100*b/today_total,2) | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table st idx usage perc* search_count | sort -perc_daily_volume</query>
+          <earliest>$timerange.earliest$</earliest>
+          <latest>$timerange.latest$</latest>
         </search>
+        <option name="count">10</option>
         <option name="refresh.display">progressbar</option>
         <format type="color" field="perc_daily_volume">
           <colorPalette type="minMidMax" maxColor="#31A35F" minColor="#FFFFFF"></colorPalette>
@@ -129,14 +137,14 @@
           <scale type="minMidMax"></scale>
         </format>
         <drilldown>
-          <link target="_self">/app/TA-data-dictionary/data_breakdown?form.idx=$row.idx$&amp;form.st=$row.st$</link>
+          <link target="_self">/app/SA-search_profiling/data_breakdown?form.idx=$row.idx$&amp;form.st=$row.st$</link>
         </drilldown>
       </table>
       <viz depends="$chart$" type="treemap_app.treemap">
         <search>
-          <query>(index=_internal source=*license_usage* $idx$ $st$) OR (index=search_summary $idx$ $st$) | eval idx=if(idx=="default","main",idx)| search $idx$ $st$ | stats sum(b) AS bytes count(eval(sourcetype=="stash")) AS search_count by idx,st| eval search_count=random()%100</query>
-          <earliest>0</earliest>
-          <latest></latest>
+          <query>(index=_internal source=*license_usage* $idx$ $st$) OR (index=search_profiling $idx$ $st$) | eval idx=if(idx=="default","main",idx)| search $idx$ $st$ | stats sum(b) AS bytes, dc(search_id) AS search_count by idx,st | fillnull value=0 bytes| search bytes&gt;0 NOT idx=_*| table idx st bytes search_count</query>
+          <earliest>$timerange.earliest$</earliest>
+          <latest>$timerange.latest$</latest>
           <sampleRatio>1</sampleRatio>
         </search>
         <option name="drilldown">all</option>
@@ -155,7 +163,7 @@
         <option name="trellis.scales.shared">1</option>
         <option name="trellis.size">medium</option>
         <drilldown>
-          <link target="_self">/app/TA-data-dictionary/data_breakdown?form.idx=$row.idx$&amp;form.st=$row.st$"</link>
+          <link target="_self">/app/SA-search_profiling/data_breakdown?form.idx=$row.idx$&amp;form.st=$row.st$</link>
         </drilldown>
       </viz>
     </panel>

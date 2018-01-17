@@ -1,164 +1,168 @@
 <form>
-  <label>Data Lense</label>
-  <fieldset submitButton="false"></fieldset>
+  <label>Data Breakdown</label>
+  <fieldset submitButton="false">
+    <input type="multiselect" token="idx" searchWhenChanged="true">
+      <label>Index</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <search>
+        <query>| inputlookup list_index_sourcetypes.csv | search index!=_*| stats count by index</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <delimiter>,</delimiter>
+    </input>
+    <input type="multiselect" token="st" searchWhenChanged="true">
+      <label>Sourcetype(s)</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>sourcetype</fieldForLabel>
+      <fieldForValue>sourcetype</fieldForValue>
+      <search>
+        <query>| inputlookup list_index_sourcetypes.csv | rename index AS idx| search NOT idx=_* $idx$| stats count by sourcetype</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <delimiter>,</delimiter>
+    </input>
+    <input type="text" token="filter" searchWhenChanged="true">
+      <label>Search Criteria</label>
+      <default></default>
+    </input>
+    <input type="time" token="timerange">
+      <label>Time Range</label>
+      <default>
+        <earliest>@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
   <row>
     <panel>
-      <single>
-        <title>License Volume (GB)</title>
+      <title>Search Stats</title>
+      <table>
         <search>
-          <query>| rest splunk_server=local /services/licenser/pools | rename title AS Pool | search [rest splunk_server=local /services/licenser/groups | search is_active=1 | eval stack_id=stack_ids | fields stack_id] | eval quota=tostring(if(isnull(effective_quota),quota,effective_quota)/(1024*1024*1024)) | table quota</query>
-          <earliest>@d</earliest>
-          <latest>now</latest>
+          <query>index="search_profiling" idx IN($idx$) st IN($st$) | eval ix=split("$idx$",","), srt=split("$st$",",") | lookup user_data_access.csv user OUTPUT allowedData defaultData | mvmatch mode=super index_field=ix st_field=srt defaults=defaultData allowed=allowedData pattern_field=none list=none output_field=data | stats dc(user) AS Users, values(user) AS Usernames, values(app) AS Apps, count AS Total_Searches count(eval(search_mode="Ad-hoc")) AS AdHoc,count(eval(search_mode=="Dashboard")) AS Dashboard,count(eval(search_mode=="Scheduled")) AS Scheduled,  by data</query>
+          <earliest>$timerange.earliest$</earliest>
+          <latest>$timerange.latest$</latest>
+          <sampleRatio>1</sampleRatio>
         </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
         <option name="drilldown">none</option>
-        <option name="numberPrecision">0.000</option>
+        <option name="percentagesRow">false</option>
         <option name="refresh.display">progressbar</option>
-      </single>
-    </panel>
-    <panel>
-      <single>
-        <title>Today's Ingest</title>
-        <search>
-          <query>index=_internal source=*license_usage* type=Usage 
-| stats sum(b) as b 
-| eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024,2))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table usage</query>
-          <earliest>@d</earliest>
-          <latest>now</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="numberPrecision">0.0</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="useColors">1</option>
-      </single>
-    </panel>
-    <panel>
-      <single>
-        <title>Average Daily Ingest (Last 7 days)</title>
-        <search>
-          <!--query>index=_internal source=*license_usage* type=RolloverSummary 
-| timechart span=1d sum(b) AS b | stats avg(b) AS b | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024,2))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table usage</query-->
-          <query>index=_internal source=*license_usage* type=Usage 
-| timechart span=1d sum(b) AS b | stats avg(b) AS b | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024,2))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table usage</query>
-          <earliest>-7d@d</earliest>
-          <latest>now</latest>
-        </search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-    <panel>
-      <single>
-        <title>Trend</title>
-        <search>
-          <query>index=_internal source=*license_usage* type=RolloverSummary 
-| timechart span=1d max(b) AS usage</query>
-          <earliest>-30d@d</earliest>
-          <latest>now</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
-      </single>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="Users">
+          <colorPalette type="minMidMax" maxColor="#31A35F" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="search_count">
+          <colorPalette type="minMidMax" maxColor="#1E93C6" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="Total_Searches">
+          <colorPalette type="minMidMax" maxColor="#1E93C6" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
     </panel>
   </row>
   <row>
     <panel>
-      <title>Data Sources</title>
-      <input type="multiselect" token="idx" searchWhenChanged="true">
-        <label>Index</label>
-        <choice value="*">All</choice>
-        <default>*</default>
-        <fieldForLabel>index</fieldForLabel>
-        <fieldForValue>index</fieldForValue>
+      <title>Search Details</title>
+      <table>
         <search>
-          <query>| inputlookup list_index_sourcetypes.csv | search index!=_*| stats count by index</query>
-          <earliest>-24h@h</earliest>
-          <latest>now</latest>
-        </search>
-        <delimiter> OR </delimiter>
-        <prefix>(</prefix>
-        <suffix>)</suffix>
-        <valuePrefix>idx="</valuePrefix>
-        <valueSuffix>"</valueSuffix>
-      </input>
-      <input type="multiselect" token="st" searchWhenChanged="true">
-        <label>Sourcetype(s)</label>
-        <choice value="*">All</choice>
-        <default>*</default>
-        <fieldForLabel>sourcetype</fieldForLabel>
-        <fieldForValue>sourcetype</fieldForValue>
-        <search>
-          <query>| inputlookup list_index_sourcetypes.csv | rename index AS idx| search NOT idx=_* $idx$| stats count by sourcetype</query>
-          <earliest>-24h@h</earliest>
-          <latest>now</latest>
-        </search>
-        <delimiter> </delimiter>
-      </input>
-      <input type="link" token="field1">
-        <label></label>
-        <choice value="chart">Chart</choice>
-        <choice value="table">Table</choice>
-        <change>
-          <condition value="chart">
-            <set token="chart">true</set>
-            <unset token="table"></unset>
-          </condition>
-          <condition value="table">
-            <set token="table">true</set>
-            <unset token="chart"></unset>
-          </condition>
-        </change>
-        <default>chart</default>
-      </input>
-      <table depends="$table$">
-        <title>Today's Ingest</title>
-        <search>
-          <query>(index=_internal source=*license_usage* type=Usage) OR (index=summary version="5.0" search_status=granted) $idx$ $st$ | eval idx=if(idx=="default","main",idx)| append [| inputlookup list_index_sourcetypes.csv | rename index AS idx, sourcetype AS st | search idx="$idx$" st="$st$" NOT idx="_*" | eval b=0 ]|stats sum(b) AS b, dc(search_id) AS search_count by st, idx | eventstats sum(b) AS today_total | eval [| rest splunk_server=local /services/licenser/pools | rename title AS Pool | search [rest splunk_server=local /services/licenser/groups | search is_active=1 | eval stack_id=stack_ids | fields stack_id] | eval search="quota="+tostring(if(isnull(effective_quota),quota,effective_quota))| table search] | eval perc_license_quota=round(100*b/quota,2) | search NOT idx=_* | eval perc_daily_volume=round(100*b/today_total,2) | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table st idx usage perc* search_count | sort -perc_daily_volume</query>
-          <earliest>@d</earliest>
-          <latest>now</latest>
+          <query>index="search_profiling" search_name="*Summary*" idx IN($idx$) st IN($st$) $filter$| eval ix=split("$idx$",","), srt=split("$st$",",") | lookup user_data_access.csv user OUTPUT allowedData defaultData | mvmatch mode=super index_field=ix st_field=srt defaults=defaultData allowed=allowedData pattern_field=none list=none output_field=data | eval time_diff=api_End_Time-api_Start_Time | eval time_range=case(time_diff&lt;60,time_diff+" secs",time_diff&lt;3600,tostring(round(time_diff/60,2))+" mins",time_diff&lt;86400,tostring(round(time_diff/3600,2))+" hrs",time_diff&lt;96000000,tostring(round(time_diff/86400,2))+" days",1==1,"All-Time") | table _time savedsearch_name user app search_type search_mode time_range data search_string search_id</query>
+          <earliest>$timerange.earliest$</earliest>
+          <latest>$timerange.latest$</latest>
+          <sampleRatio>1</sampleRatio>
         </search>
         <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
         <option name="refresh.display">progressbar</option>
-        <format type="color" field="perc_daily_volume">
-          <colorPalette type="minMidMax" maxColor="#31A35F" minColor="#FFFFFF"></colorPalette>
-          <scale type="minMidMax"></scale>
-        </format>
-        <format type="color" field="perc_license_quota">
-          <colorPalette type="list">[#65A637,#6DB7C6,#F7BC38,#F58F39,#D93F3C]</colorPalette>
-          <scale type="threshold">0,30,70,100</scale>
-        </format>
-        <format type="color" field="search_count">
-          <colorPalette type="minMidMax" maxColor="#A2CC3E" minColor="#FFFFFF"></colorPalette>
-          <scale type="minMidMax"></scale>
-        </format>
-        <drilldown>
-          <link target="_self">/app/TA-data-dictionary/data_breakdown?form.idx=$row.idx$&amp;form.st=$row.st$</link>
-        </drilldown>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
       </table>
-      <viz depends="$chart$" type="treemap_app.treemap">
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Scheduled Search Reuse (Dashboards, Alerts, Emails, Report Views)</title>
+      <table>
         <search>
-          <query>(index=_internal source=*license_usage* $idx$ $st$) OR (index=summary version="5.0" $idx$ $st$) | eval idx=if(idx=="default","main",idx)| search $idx$ $st$ | stats sum(b) AS bytes, dc(search_id) AS search_count by idx,st | fillnull value=0 bytes| table idx st bytes search_count</query>
+          <query>index="search_profiling" (search_status="granted" idx IN($idx$) st IN($st$)) OR (type=activity) | stats count count(eval(type=="alert")) AS alerts,count(eval(type=="dashboard")) AS dashboard_view, values(alert_actions) AS alert_actions, values(idx) AS idx values(st) AS st, values(recipients) AS recipients, values(type) AS type values(search_status) AS status by search_id | eval alert_actions=split(alert_actions,"
+") | search status=granted type=* | stats count AS searches, sum(alerts) AS alerts, sum(dashboard_view) AS dashboard_views, sum(recipients) AS emails by idx, st</query>
+          <earliest>$timerange.earliest$</earliest>
+          <latest>$timerange.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Searches</title>
+      <event>
+        <search>
+          <query>index=_audit action=search info=granted search=* NOT search_id=\'ta_* | search "index=tmo_cdr" OR "index=\"tmo_cdr\""</query>
+          <earliest>$timerange.earliest$</earliest>
+          <latest>$timerange.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="list.drilldown">none</option>
+        <option name="list.wrap">1</option>
+        <option name="maxLines">5</option>
+        <option name="raw.drilldown">full</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">0</option>
+        <option name="table.drilldown">all</option>
+        <option name="table.sortDirection">asc</option>
+        <option name="table.wrap">1</option>
+        <option name="type">list</option>
+      </event>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Dashboards Referencing Indexes: $idx$, Sourcetypes: $st$</title>
+      <table>
+        <search>
+          <query>| rest /servicesNS/-/-/data/ui/views | search isDashboard=1 isVisible=1 | rex field=eai:data max_match=100 "&lt;query&gt;(?&lt;search_string&gt;[^&lt;]+)&lt;/" | table title search_string eai:acl.owner eai:acl.app | rename eai:acl.owner AS owner, eai:acl.app AS app 
+| mvexpand search_string | search NOT search_string=" "
+| rex field=search_string max_match=1000 "index=\"?(?&lt;idx&gt;[a-zA-Z0-9_\*\-]+)(\s|\'|\"|\)|$)" | rex field=search_string max_match=1000 "sourcetype=\"?(?&lt;st&gt;[a-zA-Z0-9_\*:\-]+)(\s|\'|\")"| eval idx=if(mvcount(idx)&gt;1,mvdedup(idx),idx), st=if(mvcount(st)&gt;1,mvdedup(st),st) | lookup user_data_access.csv user AS owner OUTPUT allowedData defaultData | mvmatch mode=super index_field=idx st_field=st defaults=defaultData allowed=allowedData pattern_field=none list=none output_field=data | eval ix=split("$idx$",","), srt=split("$st$",",") | eval data=mvjoin(data,"|") | rex field=data max_match=1000 "(?&lt;idx&gt;[^@]+)@(?&lt;st&gt;[^\|]+)\|?" | search idx IN($idx$) st IN($st$) | eval ix=split("$idx$",","), srt=split("$st$",",") | mvmatch mode=super index_field=ix st_field=srt defaults=defaultData allowed=allowedData pattern_field=none list=none output_field=data | stats dc(search_string) AS referencing_searches by app, title, owner</query>
           <earliest>0</earliest>
           <latest></latest>
           <sampleRatio>1</sampleRatio>
         </search>
-        <option name="drilldown">all</option>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
         <option name="refresh.display">progressbar</option>
-        <option name="treemap_app.treemap.colorMode">sequential</option>
-        <option name="treemap_app.treemap.maxCategories">1000</option>
-        <option name="treemap_app.treemap.maxColor">#6db7c6</option>
-        <option name="treemap_app.treemap.minColor">#f0f7f9</option>
-        <option name="treemap_app.treemap.numOfBins">9</option>
-        <option name="treemap_app.treemap.showLabels">true</option>
-        <option name="treemap_app.treemap.showLegend">true</option>
-        <option name="treemap_app.treemap.showTooltip">true</option>
-        <option name="treemap_app.treemap.useColors">true</option>
-        <option name="treemap_app.treemap.useZoom">true</option>
-        <option name="trellis.enabled">0</option>
-        <option name="trellis.scales.shared">1</option>
-        <option name="trellis.size">medium</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
         <drilldown>
-          <link target="_self">/app/TA-data-dictionary/data_breakdown?form.idx=$row.idx$&amp;form.st=$row.st$"</link>
+          <link target="_blank">/app/$row.app$/$row.title$</link>
         </drilldown>
-      </viz>
+      </table>
     </panel>
   </row>
 </form>

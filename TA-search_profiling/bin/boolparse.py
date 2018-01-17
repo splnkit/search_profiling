@@ -303,10 +303,6 @@ if __name__ == '__main__':
         match_list = options.get('list', None)
         output_field = options.get('output_field', None)
         bool_field = options.get('bool_field', None)
-        index_field = options.get('index_field', None)
-        st_field = options.get('st_field', None)
-        defaults = options.get('defaults', None)
-        allowed = options.get('allowed', None)
         if not base_search:
             si.generateErrorResults('Requires pattern_field field.')
             exit(0)
@@ -320,13 +316,24 @@ if __name__ == '__main__':
         for result in results:
             if result[bool_field] == "1":
                 matching_data = []
-                parsed_search = BooleanParser(result[base_search])
-                idx_st_list = (pair for pair in result[match_list].split("\n"))
-                for idx_st_pair in idx_st_list:
-                    idx, sourcetype = idx_st_pair.split("@")
-                    if parsed_search.evaluate({"index": idx, "sourcetype": sourcetype}):
-                        matching_data.append(idx_st_pair)
-                result[output_field] = matching_data
+                orig_match = result[match_list]
+                try:
+                    parsed_search = BooleanParser(result[base_search])
+                    if isinstance(result[match_list], list):
+                        idx_st_list = (pair for pair in result[match_list])
+                    else:
+                        idx_st_list = [result[match_list],]
+                    for idx_st_pair in idx_st_list:
+                        idx, sourcetype = idx_st_pair.split("@")
+                        if parsed_search.evaluate({"index": idx, "sourcetype": sourcetype}):
+                            matching_data.append(idx_st_pair)
+                    result[output_field] = matching_data
+                except Exception, e:
+                    # import traceback
+                    # stack =  traceback.format_exc()
+                    # si.generateErrorResults("Error '%s'. %s %s" % (e, stack, result[base_search]))
+                    # si.outputResults(results)
+                    result[output_field] = result[match_list]
         si.outputResults(results)
     except Exception, e:
         import traceback
