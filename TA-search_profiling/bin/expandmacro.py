@@ -41,7 +41,7 @@ if __name__ == '__main__':
                 except Exception, e:
                     import traceback
                     stack =  traceback.format_exc()
-                    si.generateErrorResults("Error '%s'. %s" % (e, stack))
+                    # si.generateErrorResults("Error '%s'. %s" % (e, stack))
                     result[output_field] = search
         si.outputResults(results)
     except Exception, e:

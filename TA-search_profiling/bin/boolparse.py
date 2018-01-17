@@ -1,5 +1,7 @@
 import re
 
+import splunk.Intersplunk as si
+
 key_fields= ["index","sourcetype"]
 bool_strings = ["AND","NOT","OR"]
 bool_ops = [")","("]
@@ -296,16 +298,16 @@ class BooleanParser:
 
 if __name__ == '__main__':
     try:
-        keywords,options = si.getKeywordsAndOptions()
-        search_field    = options.get('search_field', None)
+        keywords, options = si.getKeywordsAndOptions()
+        base_search       = options.get('search_field', None)
         match_list = options.get('list', None)
         output_field = options.get('output_field', None)
-        mode = options.get('mode', None)
+        bool_field = options.get('bool_field', None)
         index_field = options.get('index_field', None)
         st_field = options.get('st_field', None)
         defaults = options.get('defaults', None)
         allowed = options.get('allowed', None)
-        if not examples:
+        if not base_search:
             si.generateErrorResults('Requires pattern_field field.')
             exit(0)
         if not match_list:
@@ -316,13 +318,15 @@ if __name__ == '__main__':
         results,dummyresults,settings = si.getOrganizedResults()
 
         for result in results:
-                # print result[examples]
-            if not mode:
-                result[output_field] = mvfind(result[examples], result[match_list])
-            elif mode=="x":
-                result[output_field] = mvpairs(result[examples], result[match_list])
-            else:
-                result[output_field] = tomfoolery(result[index_field], result[st_field], result[defaults], result[allowed])
+            if result[bool_field] == "1":
+                matching_data = []
+                parsed_search = BooleanParser(result[base_search])
+                idx_st_list = (pair for pair in result[match_list].split("\n"))
+                for idx_st_pair in idx_st_list:
+                    idx, sourcetype = idx_st_pair.split("@")
+                    if parsed_search.evaluate({"index": idx, "sourcetype": sourcetype}):
+                        matching_data.append(idx_st_pair)
+                result[output_field] = matching_data
         si.outputResults(results)
     except Exception, e:
         import traceback
