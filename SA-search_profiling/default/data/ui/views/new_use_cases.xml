@@ -1,0 +1,151 @@
+<form script="tokenlinks.js" stylesheet="table_decorations.css">
+  <label>New Use Cases</label>
+  <description>Create a new use case that provides value to your organization. Defining use cases helps to justify resources for data collection and also helps other users find the data that they need for their job.</description>
+  <search id="undefinedSources">
+    <query>| inputlookup list_index_sourcetypes.csv | search NOT index=_* NOT sourcetype=stash | rename data AS datasource | lookup data_sources datasource | where isnull(title) | table index sourcetype title use_cases | eventstats count</query>
+    <!--query>| tstats count where index=* by index,sourcetype | eval datasource=index."@".sourcetype | lookup data_sources datasource | where isnull(title) | table index sourcetype title use_cases | eventstats count</query-->
+    <earliest>-24h@h</earliest>
+    <latest>now</latest>
+    <sampleRatio>1</sampleRatio>
+  </search>
+  <search>
+    <query>
+      | makeresults | eval title="$title$", description="$desc$", value="$val$", value_description="$val_desc$",owner="$owner$",data_sources=split(ltrim("$data_sources$","_key=")," OR _key="),category="$category$" | table title description value value_description owner category | outputlookup append=True use_cases</query>
+    <!--query>
+      | inputlookup data_sources where datasource="$idx$@$st$" | eval description="$desc$",owner="$owner$",use_cases=split("$use_cases$",","),title="$title$",value="$val$" | table _key title description st idx datasource owner value use_cases | append [| makeresults | eval idx="$idx$", st="$st$", datasource="$idx$@$st$", description="$desc$",owner="$owner$",use_cases=split("$use_cases$",","),title="$title$",value="$val$" | table title description st idx datasource owner value use_cases]| head 1 | outputlookup append=True data_sources</query-->
+    <earliest>-24h@h</earliest>
+    <latest>now</latest>
+    <sampleRatio>1</sampleRatio>
+    <done>
+      <set token="trigger">$job.resultCount$</set>
+    </done>
+  </search>
+  <search id="update_data_sources">
+    <query>
+      | inputlookup data_sources where $data_sources$ | eval done=$trigger$ | eval [| inputlookup use_cases where title="$title$" | table _key | rename _key AS use_case | return use_case] | eval use_cases=mvappend(use_cases,use_case) | table title description st idx datasource owner value use_cases | outputlookup append=True data_sources</query>
+    <!--query>
+      | inputlookup data_sources where datasource="$idx$@$st$" | eval description="$desc$",owner="$owner$",use_cases=split("$use_cases$",","),title="$title$",value="$val$" | table _key title description st idx datasource owner value use_cases | append [| makeresults | eval idx="$idx$", st="$st$", datasource="$idx$@$st$", description="$desc$",owner="$owner$",use_cases=split("$use_cases$",","),title="$title$",value="$val$" | table title description st idx datasource owner value use_cases]| head 1 | outputlookup append=True data_sources</query-->
+    <earliest>-24h@h</earliest>
+    <latest>now</latest>
+    <sampleRatio>1</sampleRatio>
+    <done>
+      <set token="complete">$job.resultCount$</set>
+    </done>
+  </search>
+  <fieldset submitButton="true">
+    <input type="text" token="title">
+      <label>Title</label>
+    </input>
+    <input type="text" token="desc">
+      <label>Description</label>
+    </input>
+    <input type="dropdown" token="category">
+      <label>Category</label>
+      <fieldForLabel>Category</fieldForLabel>
+      <fieldForValue>Category</fieldForValue>
+      <search>
+        <query>| inputlookup usecase_categories.csv | table category</query>
+      </search>
+      <default>IT Ops</default>
+      <choice value="">None</choice>
+    </input>
+    <input type="text" token="val_desc">
+      <label>Value Description</label>
+    </input>
+    <input type="dropdown" token="owner">
+      <label>Use Case Owner</label>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <search>
+        <query>| rest /services/authentication/users | fields + title | eval [| rest /services/authentication/current-context/context | fields + username| rename username AS me| return me] | eval me=if(title==me,1,0) | sort -me</query>
+      </search>
+    </input>
+    <input type="dropdown" token="val">
+      <label>Value</label>
+      <fieldForLabel>value_label</fieldForLabel>
+      <fieldForValue>value_ind</fieldForValue>
+      <search base="undefinedSources">
+        <query>| inputlookup value_info.csv</query>
+      </search>
+      <choice value="11">Mission Critical</choice>
+    </input>
+    <input type="multiselect" token="data_sources">
+      <label>Data Sources</label>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>_key</fieldForValue>
+      <search>
+        <query>| inputlookup data_sources | table _key title</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <valuePrefix>_key=</valuePrefix>
+      <delimiter> OR </delimiter>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <html depends="$complete$">
+        <h2>Updates were saved successfully!              <i class="icon-check icon-inline low" title="low"/>
+        </h2>
+        <h5>Wait a few seconds to see the updated information below. $complete$ $trigger$</h5>
+                <button class="btn" data-unset-token="complete trigger title desc val val_desc owner data_sources category form.title form.desc form.val form.val_desc form.owner form.data_sources form.category">Add Another Use Case</button>
+      </html>
+    </panel>
+  </row>
+  <row depends="$complete$">
+    <panel>
+      <title>New or Undefined Data Source -  Index=$idx$  Sourcetype=$st$</title>
+      <table>
+        <search>
+          <query>| inputlookup use_cases where title="$title$"</query>
+          <earliest>-10s</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="Use_Cases">
+          <colorPalette type="map">{"-":#FFFFFF,"*":#65A637}</colorPalette>
+        </format>
+        <format type="color" field="Owner">
+          <colorPalette type="map">{"-":#FFFFFF,"*":#65A637}</colorPalette>
+        </format>
+        <format type="color" field="Title">
+          <colorPalette type="map">{"-":#FFFFFF,"*":#65A637}</colorPalette>
+        </format>
+        <format type="color" field="Description">
+          <colorPalette type="map">{"-":#FFFFFF,"Logs*":#3863A0}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Examples of Current Use Cases ($xcount$)</title>
+      <table id="table1">
+        <title>Click to add information about data source</title>
+        <search>
+          <query>| inputlookup use_cases | table title description category owner value value_description</query>
+          <earliest>-10s</earliest>
+          <latest>now</latest>
+          <done>
+            <set token="xcount">$job.resultCount$</set>
+          </done>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">row</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

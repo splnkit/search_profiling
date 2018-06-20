@@ -1,0 +1,63 @@
+<form showsource="false">
+  <label>Data Source Detail</label>
+  <search>
+    <query>| inputlookup data_sources where datasource="$datasource$" | table title description idx st category value</query>
+    <done>
+      <condition match="$job.resultCount$ ==1">
+        <set token="idx">$result.idx$</set>
+        <set token="st">$result.st$</set>
+        <set token="title">$result.title$</set>
+      </condition>
+    </done>
+  </search>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="datasource">
+      <label>Data Source</label>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>datasource</fieldForValue>
+      <search>
+        <query>| inputlookup data_sources | stats count by title, datasource</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <html>
+        <h1>$title$</h1>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Event Count</title>
+        <search>
+          <query>| tstats count where index="$idx$" sourcetype="$st$" by _time span=30m</query>
+          <earliest>-7d@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>License Usage</title>
+        <search>
+          <query>index=_internal source=*license_usage* idx="$idx$" st="$st$" | timechart sum(b) AS bytes span=30m</query>
+          <earliest>-7d@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+</form>

@@ -1,4 +1,7 @@
 <nav color="#708794">
+  <view name="home" />
   <view name="data" default="true" label="Data Lense" />
+  <view name="datasource_contents"/>
+  <view name="use_case_contents"/>
   <view name="search" />
 </nav>

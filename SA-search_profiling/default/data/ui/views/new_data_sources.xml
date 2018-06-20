@@ -1,0 +1,151 @@
+<form script="table_icons_rangemap.js" stylesheet="table_decorations.css">
+  <label>New Data Sources</label>
+  <description>You have some new or undefined data sources. Please take a moment to provide some information about the data source and how it's being used.</description>
+  <search id="undefinedSources">
+    <query>| inputlookup list_index_sourcetypes.csv | search NOT index=_* NOT sourcetype=stash | rename data AS datasource | lookup data_sources datasource | where isnull(title) | table index sourcetype title use_cases | eventstats count</query>
+    <!--query>| tstats count where index=* by index,sourcetype | eval datasource=index."@".sourcetype | lookup data_sources datasource | where isnull(title) | table index sourcetype title use_cases | eventstats count</query-->
+    <earliest>-24h@h</earliest>
+    <latest>now</latest>
+    <sampleRatio>1</sampleRatio>
+    <done>
+      <set token="xcount">$job.resultCount$</set>
+    </done>
+    <refresh>10s</refresh>
+    <refreshType>delay</refreshType>
+  </search>
+  <search>
+    <query>
+      | inputlookup data_sources where datasource="$idx$@$st$" | eval description="$desc$",owner="$owner$",use_cases=split("$use_cases$",","),title="$title$",value="$val$" | table _key title description st idx datasource owner value use_cases | append [| makeresults | eval idx="$idx$", st="$st$", datasource="$idx$@$st$", description="$desc$",owner="$owner$",use_cases=split("$use_cases$",","),title="$title$",value="$val$" | table title description st idx datasource owner value use_cases]| head 1 | outputlookup append=True data_sources</query>
+    <earliest>-24h@h</earliest>
+    <latest>now</latest>
+    <sampleRatio>1</sampleRatio>
+    <done>
+      <set token="complete">$job.resultCount$</set>
+    </done>
+  </search>
+  <fieldset submitButton="true">
+    <input type="dropdown" token="idx" depends="$idx$,$st$">
+      <label>Index</label>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <search base="undefinedSources">
+        <query>|dedup index</query>
+      </search>
+      <default>$idx$</default>
+    </input>
+    <input type="dropdown" token="st" depends="$idx$,$st$">
+      <label>Sourcetype</label>
+      <fieldForLabel>sourcetype</fieldForLabel>
+      <fieldForValue>sourcetype</fieldForValue>
+      <search base="undefinedSources">
+        <query>|dedup sourcetype</query>
+      </search>
+      <default>$st$</default>
+    </input>
+    <input type="text" token="title" depends="$idx$,$st$">
+      <label>Title</label>
+    </input>
+    <input type="text" token="desc" depends="$idx$,$st$">
+      <label>Description</label>
+    </input>
+    <input type="dropdown" token="owner" depends="$idx$,$st$">
+      <label>Data Owner</label>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <search>
+        <query>| rest /services/authentication/users</query>
+      </search>
+    </input>
+    <input type="dropdown" token="use_cases" depends="$idx$,$st$">
+      <label>Use Cases</label>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <search>
+        <query>| inputlookup use_cases | stats count by title</query>
+      </search>
+      <choice value="-">None</choice>
+    </input>
+    <input type="dropdown" token="val" depends="$idx$,$st$">
+      <label>Value</label>
+      <choice value="11">Mission Critical</choice>
+      <choice value="3">Visibility</choice>
+      <choice value="5">Reduces MTTR</choice>
+    </input>
+  </fieldset>
+  <row>
+    <panel depends="$complete$">
+      <html>
+        <h2>Updates were saved successfully!              <i class="icon-check icon-inline low" title="low"/>
+        </h2>
+        <h5>Wait a few seconds to see the updated information below.</h5>
+      </html>
+    </panel>
+  </row>
+  <row depends="$idx$,$st$">
+    <panel>
+      <title>New or Undefined Data Source -  Index=$idx$  Sourcetype=$st$</title>
+      <table>
+        <search>
+          <query>| inputlookup data_sources where datasource="$idx$@$st$" | rename idx AS Index, st AS Sourcetype, title AS Title, owner AS Owner, description AS Description, use_cases AS Use_Cases | append [| makeresults | eval Index="$idx$", Sourcetype="$st$", Description="-",Owner="-",Use_Cases="-",Title="-" ]| table Index Sourcetype Title Description Owner Use_Cases| head 1</query>
+          <earliest>-10s</earliest>
+          <latest>now</latest>
+          <refresh>10s</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="Use_Cases">
+          <colorPalette type="map">{"-":#FFFFFF,"*":#65A637}</colorPalette>
+        </format>
+        <format type="color" field="Owner">
+          <colorPalette type="map">{"-":#FFFFFF,"*":#65A637}</colorPalette>
+        </format>
+        <format type="color" field="Title">
+          <colorPalette type="map">{"-":#FFFFFF,"*":#65A637}</colorPalette>
+        </format>
+        <format type="color" field="Description">
+          <colorPalette type="map">{"-":#FFFFFF,"Logs*":#3863A0}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>New or Undefined Data Sources ($xcount$)</title>
+      <table id="table1">
+        <title>Click to add information about data source</title>
+        <search base="undefinedSources">
+          <query>| table index sourcetype | eval title=if(isnull(title),"severe","low"), use_cases=if(isnull(use_cases),"severe","low")</query>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">row</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <drilldown>
+          <set token="idx">$row.index$</set>
+          <set token="st">$row.sourcetype$</set>
+          <set token="idx">$row.index$</set>
+          <unset token="owner"></unset>
+          <unset token="title"></unset>
+          <unset token="desc"></unset>
+          <unset token="val"></unset>
+          <unset token="use_cases"></unset>
+          <unset token="form.owner"></unset>
+          <unset token="form.title"></unset>
+          <unset token="form.desc"></unset>
+          <unset token="form.val"></unset>
+          <unset token="form.use_cases"></unset>
+          <unset token="complete"></unset>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+</form>

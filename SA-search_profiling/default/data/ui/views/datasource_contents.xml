@@ -1,0 +1,12 @@
+<dashboard showsource="false" script="datasource_contents.js" stylesheet="contents.css">
+  <label>Data Sources</label>
+  <row>
+    <panel depends="$ds$">
+      <event>
+        <title>10 Most Popular Executables Last Hour (UNIX - CPU)</title>
+        <search ref="10 Most Popular Executables Last Hour (UNIX - CPU)"></search>
+        <option name="list.drilldown">none</option>
+      </event>
+    </panel>
+  </row>
+</dashboard>

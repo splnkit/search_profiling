@@ -1,0 +1,44 @@
+<dashboard>
+  <label>Data Assets</label>
+  <row>
+    <panel>
+      <title>Dashboards</title>
+      <table>
+        <search>
+          <query>| rest /servicesNS/nobody/-/data/ui/views | table title eai:appName eai:acl.owner *owner* eai:data</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Saved Searches</title>
+      <table>
+        <search>
+          <query>| rest /servicesNS/-/-/saved/searches | table is_scheduled eai:acl.app actions owner author cron_schedule description disabled search title</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>
