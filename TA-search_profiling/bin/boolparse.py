@@ -16,10 +16,14 @@ def wr(tokens):
 
 def wildcard_replace(token):
     if token[0]=="*":
-        token = re.sub("\*","[^_].+",token)
-    else:
-        token = re.sub("\*",".+", token)
+        token = re.sub("^\*","[^_]*",token)
+    token = re.sub("\*",".*", token)
     return token
+    # if token[0]=="*":
+    #     token = re.sub("\*","[^_].+",token)
+    # else:
+    #     token = re.sub("\*",".+", token)
+    # return token
 
 def adjust_tokens(tokens):
     conditions = []
@@ -284,7 +288,13 @@ class BooleanParser:
             return left <= right
         elif treeNode.tokenType == TokenType.EQ:
 #            return left == right
-            return bool(re.match(right,left))
+            # if "." in right:
+            match_string = re.match(right,left)
+            if not match_string:
+                return False
+            a, b = match_string.span()
+            return bool(match_string.string[a:b]==left or right==left)
+            # return bool(right==left)
         elif treeNode.tokenType == TokenType.NEQ:
             return left != right
         elif treeNode.tokenType == TokenType.AND:

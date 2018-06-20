@@ -35,7 +35,7 @@ def mvpairs(search_indexes, data_pairs):
     return pairs
 
 
-def tomfoolery(indexes, sourcetypes, default_pairs, allowed_pairs):
+def mvmagic(indexes, sourcetypes, default_pairs, allowed_pairs):
 
     if len(indexes) == 0 and len(sourcetypes) == 0:
         return default_pairs.split("\n")
@@ -57,13 +57,12 @@ def tomfoolery(indexes, sourcetypes, default_pairs, allowed_pairs):
     else:
         pairs = []
         if isinstance(sourcetypes, basestring):
-            st_filters = [re.sub("\*","[^_].+",sourcetypes)]
-        else:
-            st_filters = [re.sub("\*","[^_].+",i) for i in sourcetypes]
+            sourcetypes = [sourcetypes]
+        st_filters = [re.sub("\*",".+",i) for i in sourcetypes]
         if isinstance(indexes, basestring):
-            index_filters = [re.sub("\*","[^_].+",indexes)]
-        else:
-            index_filters = [re.sub("\*","[^_].+",i) for i in indexes]
+            indexes = [indexes]
+        index_filters = [re.sub("^\*","[^_].+",i) for i in indexes]
+        index_filters = [re.sub("\*",".+",i) for i in index_filters]
         for d in allowed_pairs.split("\n"):
             for ifilter in index_filters:
                 if re.search("^"+ifilter+"@", d)>0:
@@ -104,7 +103,7 @@ if __name__ == '__main__':
             elif mode=="x":
                 result[output_field] = mvpairs(result[examples], result[match_list])
             else:
-                result[output_field] = tomfoolery(result[index_field], result[st_field], result[defaults], result[allowed])
+                result[output_field] = mvmagic(result[index_field], result[st_field], result[defaults], result[allowed])
         si.outputResults(results)
     except Exception, e:
         import traceback
