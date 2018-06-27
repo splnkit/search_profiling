@@ -20,6 +20,12 @@ td.icon .elevated {
 td.icon .low {
     color: #006400;
 }
+<<<<<<< HEAD
+=======
+.icon .low {
+    color: #006400;
+}
+>>>>>>> master
 
 /* Row Coloring */
 

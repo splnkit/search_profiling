@@ -6,7 +6,7 @@
       <single>
         <title>License Volume (GB)</title>
         <search>
-          <query>| rest splunk_server=local /services/licenser/pools | rename title AS Pool | search [rest splunk_server=local /services/licenser/groups | search is_active=1 | eval stack_id=stack_ids | fields stack_id] | eval quota=tostring(if(isnull(effective_quota),quota,effective_quota)/(1024*1024*1024)) | table quota</query>
+          <query>index=_internal sourcetype=splunkd component=licenseusage type=RolloverSummary  productType=enterprise | stats values(stacksz) AS stacksz by licenseGuids | stats sum(stacksz) AS license_volume | eval quota=license_volume/(1024*1024*1024) | table quota</query>
           <earliest>@d</earliest>
           <latest>now</latest>
         </search>

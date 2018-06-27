@@ -24,10 +24,14 @@ require(['jquery', 'underscore', 'splunkjs/mvc', 'util/console'], function($, _,
 
         var unsetTokenName = target.data('unset-token');
         if (unsetTokenName) {
+<<<<<<< HEAD
             var token_list = unsetTokenName.split(" ");
             for (i=0; i<token_list.length; i++) {
                 setToken(token_list[i], undefined);
             }
+=======
+            setToken(unsetTokenName, undefined);
+>>>>>>> master
         }
 
         var tokenJson = target.data('token-json');

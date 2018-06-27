@@ -20,6 +20,29 @@ def mvfind(search_indexes, default_indexes):
     else:
         return search_indexes
 
+def megafind(search_indexes, default_indexes, data_pairs):
+    if "*" in search_indexes and "_*" in search_indexes:
+        return data_pairs
+    elif "*" in search_indexes:
+        pairs = [i for i in data_pairs if re.search("^[^_]",i)]
+        for ind in search_indexes:
+            if re.search("^_",ind):
+                pairs.extend([dp for dp in data_pairs if re.search("^"+ind+"@",dp)])
+    elif "_*" in search_indexes:
+        pairs = [i for i in data_pairs if re.search("^_",i)]
+        for ind in search_indexes:
+            if re.search("^[^_]",ind):
+                pairs.extend([dp for dp in data_pairs if re.search("^"+ind+"@",dp)])
+    else:
+        pairs = []
+        if isinstance(search_indexes, basestring):
+            pairs.extend([dp for dp in data_pairs if re.search("^"+search_indexes+"@",dp)])
+        else:
+            for ind in search_indexes:
+                pairs.extend([dp for dp in data_pairs if re.search("^"+ind+"@",dp)]) 
+    return pairs
+
+
 def mvpairs(search_indexes, data_pairs):
 
     pairs = []
@@ -35,7 +58,7 @@ def mvpairs(search_indexes, data_pairs):
     return pairs
 
 
-def tomfoolery(indexes, sourcetypes, default_pairs, allowed_pairs):
+def mvmagic(indexes, sourcetypes, default_pairs, allowed_pairs):
 
     if len(indexes) == 0 and len(sourcetypes) == 0:
         return default_pairs.split("\n")
@@ -57,13 +80,12 @@ def tomfoolery(indexes, sourcetypes, default_pairs, allowed_pairs):
     else:
         pairs = []
         if isinstance(sourcetypes, basestring):
-            st_filters = [re.sub("\*","[^_].+",sourcetypes)]
-        else:
-            st_filters = [re.sub("\*","[^_].+",i) for i in sourcetypes]
+            sourcetypes = [sourcetypes]
+        st_filters = [re.sub("\*",".+",i) for i in sourcetypes]
         if isinstance(indexes, basestring):
-            index_filters = [re.sub("\*","[^_].+",indexes)]
-        else:
-            index_filters = [re.sub("\*","[^_].+",i) for i in indexes]
+            indexes = [indexes]
+        index_filters = [re.sub("^\*","[^_].+",i) for i in indexes]
+        index_filters = [re.sub("\*",".+",i) for i in index_filters]
         for d in allowed_pairs.split("\n"):
             for ifilter in index_filters:
                 if re.search("^"+ifilter+"@", d)>0:
@@ -103,8 +125,10 @@ if __name__ == '__main__':
                 result[output_field] = mvfind(result[examples], result[match_list])
             elif mode=="x":
                 result[output_field] = mvpairs(result[examples], result[match_list])
+            elif mode=="y":
+                result[output_field] = megafind(result[examples], result[st_field])
             else:
-                result[output_field] = tomfoolery(result[index_field], result[st_field], result[defaults], result[allowed])
+                result[output_field] = mvmagic(result[index_field], result[st_field], result[defaults], result[allowed])
         si.outputResults(results)
     except Exception, e:
         import traceback
