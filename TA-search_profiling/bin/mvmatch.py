@@ -1,9 +1,6 @@
 import re
 import splunk.Intersplunk as si
 
-search_indexes = ["th*","that"]
-
-default_indexes = ["this","that","the other","what"]
 
 def mvfind(search_indexes, default_indexes):
 
@@ -109,6 +106,7 @@ if __name__ == '__main__':
         st_field = options.get('st_field', None)
         defaults = options.get('defaults', None)
         allowed = options.get('allowed', None)
+        dm = options.get('dm_field')
         if not examples:
             si.generateErrorResults('Requires pattern_field field.')
             exit(0)
@@ -120,7 +118,8 @@ if __name__ == '__main__':
         results,dummyresults,settings = si.getOrganizedResults()
 
         for result in results:
-                # print result[examples]
+            if result[dm]:
+                continue
             if not mode:
                 result[output_field] = mvfind(result[examples], result[match_list])
             elif mode=="x":

@@ -118,7 +118,7 @@ require([
                         //     $versions.append($('<span class="label full_support"></span>').addClass(version).attr('title', 'Version').tooltip().text(version));
                         // });
                         $versions.append($('<span class="label full_support"></span>').addClass(exampleInfo.get('value')).attr('title', 'Value').tooltip().text(exampleInfo.get('value')));
-                        $example.append($exampleImg).append($exampleContent);
+                        $example.append($exampleContent); //.append($exampleImg)
                         $categoryContents.append($example);
                     });
                     $contents.append($category);
