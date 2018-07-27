@@ -92,7 +92,7 @@ require([
                     $category.append($("<h2></h2>").text(category));
                     var $categoryContents = $('<div class=""></div>').appendTo($category);
                     categoryInfoCollection.each(function(exampleInfo){
-                        var id = exampleInfo.get('title');
+                        var id = exampleInfo.get('datasource');
                         var $example = $('<a class="example"></a>').attr('href', "datasources?form.datasource="+id);
                         var view = dashboards.find(function(m){ return m.entry.get('name') === id; });
                         if(!view) {
