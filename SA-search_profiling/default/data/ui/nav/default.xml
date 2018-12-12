@@ -1,7 +1,21 @@
 <nav color="#708794">
-  <view name="home" />
-  <view name="data" default="true" label="Data Lense" />
-  <view name="datasource_contents"/>
-  <view name="use_case_contents"/>
+  <collection label="Data Views">
+    <view name="home" default="true" />
+    <view name="data_breakdown"/>
+  </collection>
+  <collection label="User Views">
+    <!--view name="data" default="true" label="Data Lense" /-->
+    <view name="user_lense" label="User Lense" />
+    <view name="user_breakdown"></view>
+  </collection>
+  <collection label="Use Case Management">
+    <view name="datasource_contents"/>
+  	<view name="use_case_contents"/>
+    <collection label="Configuration">
+      <view name="new_data_sources"/>
+  	  <view name="new_use_cases"/>
+    </collection>
+  </collection>
+  <view name="documentation"/>
   <view name="search" />
 </nav>
