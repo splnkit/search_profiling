@@ -17,11 +17,11 @@
     </panel>
     <panel>
       <single>
-        <title>Today's Ingest</title>
+        <title>Today's Ingest (GB)</title>
         <search>
           <query>index=_internal source=*license_usage* type=Usage 
 | stats sum(b) as b 
-| eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024,2))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table usage</query>
+| eval usage=tostring(round(b/(1024*1024*1024),2)) | table usage</query>
           <earliest>@d</earliest>
           <latest>now</latest>
         </search>
@@ -37,10 +37,10 @@
         <search>
           <!--query>index=_internal source=*license_usage* type=RolloverSummary 
 | timechart span=1d sum(b) AS b | stats avg(b) AS b | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024,2))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table usage</query-->
-          <query>index=_internal source=*license_usage* type=Usage 
-| timechart span=1d sum(b) AS b | stats avg(b) AS b | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024,2))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table usage</query>
+          <query>index=_internal source=*license_usage* type=RolloverSummary 
+| timechart span=1d sum(b) AS b | stats avg(b) AS b | eval usage=tostring(round(b/(1024*1024*1024),2))+" GB") | table usage</query>
           <earliest>-7d@d</earliest>
-          <latest>now</latest>
+          <latest>@d</latest>
         </search>
         <option name="drilldown">none</option>
       </single>

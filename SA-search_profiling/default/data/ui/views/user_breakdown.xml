@@ -5,12 +5,10 @@
       <label>Roles</label>
       <choice value="*">All</choice>
       <default>*</default>
-      <fieldForLabel>roles</fieldForLabel>
-      <fieldForValue>roles</fieldForValue>
+      <fieldForLabel>user_role</fieldForLabel>
+      <fieldForValue>user_role</fieldForValue>
       <search>
-        <query>| inputlookup user_data_access.csv
-     | eval roles=split(role,"
-") | eval number=mvcount(roles) | mvexpand roles | stats count by roles | table roles</query>
+        <query>index=search_profile user_role=* | stats count by user_role</query>
         <earliest>-24h@h</earliest>
         <latest>now</latest>
       </search>
@@ -23,7 +21,7 @@
       <fieldForLabel>user</fieldForLabel>
       <fieldForValue>user</fieldForValue>
       <search>
-        <query>| inputlookup user_data_access.csv | table user</query>
+        <query>index=search_profile user_role=* | stats count by user_role</query>
         <earliest>-24h@h</earliest>
         <latest>now</latest>
       </search>
@@ -42,7 +40,7 @@
       <title>Search Mode</title>
       <chart>
         <search>
-          <query>index="search_profiling" user=$user$ | stats count by search_mode user | lookup sh3userdata.csv user OUTPUT role AS roles | search roles=*$roles$* | stats sum(count) by search_mode</query>
+          <query>index="search_profiling" user="$user$" user_role="$roles$"| stats count by search_mode user | lookup sh3userdata.csv user OUTPUT role AS roles | search roles=*$roles$* | stats sum(count) by search_mode</query>
           <earliest>$timerange.earliest$</earliest>
           <latest>$timerange.latest$</latest>
           <sampleRatio>1</sampleRatio>
@@ -85,7 +83,7 @@
       <title>Search Type</title>
       <chart>
         <search>
-          <query>index="search_profiling" user=$user$ | stats count by search_type user | lookup sh3userdata.csv user OUTPUT role AS roles | search roles=*$roles$* | stats sum(count) by search_type</query>
+          <query>index="search_profiling" user=$user$ user_role=$roles$ | stats count by search_type</query>
           <earliest>$timerange.earliest$</earliest>
           <latest>$timerange.latest$</latest>
           <sampleRatio>1</sampleRatio>
@@ -130,7 +128,7 @@
       <title>Search Count</title>
       <table>
         <search>
-          <query>index="search_profiling" user=$user$ | stats count by user | lookup sh3userdata.csv user OUTPUT role AS roles | search roles=*$roles$* | table user roles count</query>
+          <query>index="search_profiling" user=$user$ user_role=$roles$ | stats count by user user_role </query>
           <earliest>$timerange.earliest$</earliest>
           <latest>$timerange.latest$</latest>
           <sampleRatio>1</sampleRatio>
@@ -163,10 +161,10 @@
       <title>Search Activity</title>
       <table>
         <search>
-          <query>index=search_profiling user=$user$ search_string=*
+          <query>index=search_profiling user=$user$ user_role=$roles$ search_string=*
      | fields user, search_string, _time, search_id
      | eval search_id = trim(replace(search_id, "\'", ""))
-     | stats count by  user, search_string | sort - count | lookup sh3userdata.csv user OUTPUT role AS roles | search roles=*$roles$*</query>
+     | stats count by  user, search_string | sort - count</query>
           <earliest>$timerange.earliest$</earliest>
           <latest>$timerange.latest$</latest>
           <sampleRatio>1</sampleRatio>

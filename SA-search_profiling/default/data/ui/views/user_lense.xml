@@ -7,7 +7,7 @@
         <search>
           <query>index=search_profiling NOT user=splunk-system-user 
 | stats dc(user)</query>
-          <earliest>0</earliest>
+          <earliest>@d</earliest>
           <latest></latest>
           <sampleRatio>1</sampleRatio>
         </search>
@@ -19,9 +19,9 @@
       <title>Average Search Load per day (7 days)</title>
       <single>
         <search>
-          <query>action=search index=_audit info=granted search=* NOT "search='|history" NOT "user=splunk-system-user" NOT "search='typeahead" NOT "search=‘| rest" | timechart span=1d count | stats avg(count)</query>
-          <earliest>0</earliest>
-          <latest></latest>
+          <query>index=search_profiling action=info | timechart span=1d count | stats avg(count)</query>
+          <earliest>-7d</earliest>
+          <latest>@d</latest>
           <sampleRatio>1</sampleRatio>
         </search>
         <option name="drilldown">none</option>
@@ -37,7 +37,7 @@
 | eval perc_searched = (used/total)*100
 | eval IdxPercUsage = perc_searched + "%"
 | table IdxPercUsage</query>
-          <earliest>0</earliest>
+          <earliest>-7d</earliest>
           <latest></latest>
           <sampleRatio>1</sampleRatio>
         </search>
@@ -54,7 +54,7 @@
 | eval perc_searched = round((used/total)*100,2)
 | eval STPercUsage = perc_searched + "%"
 | table STPercUsage</query>
-          <earliest>0</earliest>
+          <earliest>-7d</earliest>
           <latest></latest>
           <sampleRatio>1</sampleRatio>
         </search>
@@ -65,11 +65,11 @@
   </row>
   <row>
     <panel>
-      <title>Tops Users</title>
+      <title>Top Users</title>
       <chart>
         <search>
           <query>index="search_profiling" data=* NOT user=splunk-system-user NOT user=admin | top limit=5 user</query>
-          <earliest>0</earliest>
+          <earliest>-7d</earliest>
           <latest></latest>
           <sampleRatio>1</sampleRatio>
         </search>
@@ -107,7 +107,7 @@
       <chart>
         <search>
           <query>index="search_profiling" data=* | eval idx=mvdedup(st) | top limit=10 st</query>
-          <earliest>0</earliest>
+          <earliest>-7d</earliest>
           <latest></latest>
           <sampleRatio>1</sampleRatio>
         </search>
@@ -145,7 +145,7 @@
       <chart>
         <search>
           <query>index="search_profiling" data=*  | eval idx=mvdedup(idx) | top limit=10 idx</query>
-          <earliest>0</earliest>
+          <earliest>-7d</earliest>
           <latest></latest>
           <sampleRatio>1</sampleRatio>
         </search>
@@ -186,11 +186,9 @@
         <search>
           <query>index=search_profiling search_string=* 
      | fields user, search_string
-     | stats count by  user, search_string
-     | lookup sh3userdata.csv user OUTPUT role
-     | eval roles=split(role,"
-") | eval number=mvcount(roles) | mvexpand roles | search NOT roles=can_delete NOT roles=index-manager NOT roles=internal_monitoring_role NOT roles=splunk-system-role NOT roles=cmon_role NOT roles=internal_ops_admin_role | stats count by roles, user</query>
-          <earliest>0</earliest>
+     | stats count by  user, user_role
+     | search NOT roles=can_delete NOT roles=index-manager NOT roles=internal_monitoring_role NOT roles=splunk-system-role NOT roles=cmon_role NOT roles=internal_ops_admin_role</query>
+          <earliest>-7d</earliest>
           <latest></latest>
           <sampleRatio>1</sampleRatio>
         </search>
