@@ -1,7 +1,9 @@
-App For Search Profiling (Alpha)
-================================
+App For Search Profiling
+========================
 
-Author: Gary Burgett <gburgett@splunk.com>
+Team: Nate Kwong, Thomas Przelomiec, Nik Macroglou, Gary Burgett
+
+For Questions email: <search-insights@splunk.com> 
 
 Helping Splunk owners understand what data they have and how it's being used.
 
@@ -10,9 +12,9 @@ makes it easy to track what data is being collected, and how much. However its i
 logging does not make it easy to see how each data source is being used, by whom, and for
 what purposes. These are the questions that this app seeks to help answer.
 
-Version 0.1
+Version 1.0
 -----------
-This app is an alpha that provides the basic building blocks to tie searches to the data
+This app is an inital release that provides the basic building blocks to tie searches to the data
 sources that they access so that we can start answering the above questions.
 
 Components
