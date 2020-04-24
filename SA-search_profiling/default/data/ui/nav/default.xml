@@ -1,11 +1,11 @@
 <nav color="#708794">
   <collection label="Data Views">
-    <view name="home" default="true" />
+    <view name="data" default="true" />
     <view name="data_breakdown"/>
   </collection>
   <collection label="User Views">
     <!--view name="data" default="true" label="Data Lense" /-->
-    <view name="user_lense" label="User Lense" />
+    <view name="users" label="User Lense" />
     <view name="user_breakdown"></view>
   </collection>
   <collection label="Use Case Management">

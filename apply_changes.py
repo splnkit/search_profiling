@@ -5,7 +5,7 @@ import subprocess
 app_list = [ app for app in os.listdir(".") if app.startswith("TA") or app.startswith("S") ]
 print app_list
 destination_root = "/Users/gburgett/Desktop/Workspace/Splunk_Bin/splunk_test"
-# destination_root = "/Users/gburgett/Downloads/test_apply"
+# destination_root = "/Users/gburgett/Downloads/splunk_sp"
 destination = destination_root + "/etc/apps/%s" 
 restart_command = destination_root + "/bin/splunk restart --answer-yes --accept-license"
 # #create a backup directory

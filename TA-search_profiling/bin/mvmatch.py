@@ -17,7 +17,7 @@ def mvfind(search_indexes, default_indexes):
     else:
         return search_indexes
 
-def megafind(search_indexes, default_indexes, data_pairs):
+def megafind(search_indexes, data_pairs):
     if "*" in search_indexes and "_*" in search_indexes:
         return data_pairs
     elif "*" in search_indexes:
@@ -97,7 +97,7 @@ def mvmagic(indexes, sourcetypes, default_pairs, allowed_pairs):
 
 if __name__ == '__main__':
     try:
-        keywords,options = si.getKeywordsAndOptions()
+        keywords, options = si.getKeywordsAndOptions()
         examples    = options.get('pattern_field', None)
         match_list = options.get('list', None)
         output_field = options.get('output_field', None)
@@ -110,26 +110,28 @@ if __name__ == '__main__':
         if not examples:
             si.generateErrorResults('Requires pattern_field field.')
             exit(0)
-        if not match_list:
+        if not match_list and not st_field:
             si.generateErrorResults('Requires list field.')
             exit(0)
         if not output_field:
             output_field = "new_field"
-        results,dummyresults,settings = si.getOrganizedResults()
+        results, dummyresults, settings = si.getOrganizedResults()
 
         for result in results:
-            if result[dm]:
+            if result.get(dm, None):
                 continue
             if not mode:
                 result[output_field] = mvfind(result[examples], result[match_list])
-            elif mode=="x":
+            elif mode == "x":
                 result[output_field] = mvpairs(result[examples], result[match_list])
-            elif mode=="y":
+            elif mode == "y":
                 result[output_field] = megafind(result[examples], result[st_field])
             else:
-                result[output_field] = mvmagic(result[index_field], result[st_field], result[defaults], result[allowed])
+                result[output_field] = mvmagic(result.get(index_field, None), result.get(st_field, None), result[defaults], result[allowed])
         si.outputResults(results)
+    except KeyError, e:
+        si.generateErrorResults("Events are missing the '%s' field. Check to make sure the lookups are populated." % e)
     except Exception, e:
         import traceback
-        stack =  traceback.format_exc()
+        stack = traceback.format_exc()
         si.generateErrorResults("Error '%s'. %s" % (e, stack))

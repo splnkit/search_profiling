@@ -1,5 +1,5 @@
 <form>
-  <label>Data Lense</label>
+  <label>Data Lens</label>
   <fieldset submitButton="false"></fieldset>
   <row>
     <panel>
@@ -19,7 +19,7 @@
       <single>
         <title>Today's Ingest (GB)</title>
         <search>
-          <query>index=_internal source=*license_usage* type=Usage 
+          <query>index=_internal sourcetype=splunkd component=LicenseUsage type=Usage 
 | stats sum(b) as b 
 | eval usage=tostring(round(b/(1024*1024*1024),2)) | table usage</query>
           <earliest>@d</earliest>
@@ -35,27 +35,29 @@
       <single>
         <title>Average Daily Ingest (Last 7 days)</title>
         <search>
-          <!--query>index=_internal source=*license_usage* type=RolloverSummary 
-| timechart span=1d sum(b) AS b | stats avg(b) AS b | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024,2))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table usage</query-->
-          <query>index=_internal source=*license_usage* type=RolloverSummary 
-| timechart span=1d sum(b) AS b | stats avg(b) AS b | eval usage=tostring(round(b/(1024*1024*1024),2))+" GB") | table usage</query>
+          <query>index=_internal sourcetype=splunkd component=LicenseUsage type=RolloverSummary | bin _time span=1d |stats sum(b) AS b by _time | eval GB=b/1024/1024/1024| table _time GB | stats avg(GB) AS GB</query>
           <earliest>-7d@d</earliest>
-          <latest>@d</latest>
+          <latest>now</latest>
         </search>
         <option name="drilldown">none</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="unit">GB</option>
       </single>
     </panel>
     <panel>
       <single>
-        <title>Trend</title>
+        <title>Trend (30 days)</title>
         <search>
-          <query>index=_internal source=*license_usage* type=RolloverSummary 
-| timechart span=1d max(b) AS usage</query>
+          <query>index=_internal sourcetype=splunkd component=LicenseUsage type=RolloverSummary | bin _time span=1d |timechart sum(b) AS b | eval GB=b/1024/1024/1024| table _time GB</query>
           <earliest>-30d@d</earliest>
           <latest>now</latest>
         </search>
         <option name="drilldown">none</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
         <option name="refresh.display">progressbar</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="unit">GB</option>
       </single>
     </panel>
   </row>
@@ -90,23 +92,11 @@
           <earliest>-24h@h</earliest>
           <latest>now</latest>
         </search>
-        <delimiter> </delimiter>
-      </input>
-      <input type="link" token="field1">
-        <label></label>
-        <choice value="chart">Chart</choice>
-        <choice value="table">Table</choice>
-        <change>
-          <condition value="chart">
-            <set token="chart">true</set>
-            <unset token="table"></unset>
-          </condition>
-          <condition value="table">
-            <set token="table">true</set>
-            <unset token="chart"></unset>
-          </condition>
-        </change>
-        <default>chart</default>
+        <delimiter> OR </delimiter>
+        <prefix>(</prefix>
+        <suffix>)</suffix>
+        <valuePrefix>st="</valuePrefix>
+        <valueSuffix>"</valueSuffix>
       </input>
       <input type="time" token="timerange">
         <label>Time Range</label>
@@ -115,12 +105,36 @@
           <latest>now</latest>
         </default>
       </input>
+      <input type="radio" token="field1">
+        <label></label>
+        <choice value="sankey">Use Cases</choice>
+        <choice value="chart">Chart</choice>
+        <choice value="table">Table</choice>
+        <change>
+          <condition value="chart">
+            <set token="chart">true</set>
+            <unset token="table"></unset>
+            <unset token="use_case"></unset>
+          </condition>
+          <condition value="table">
+            <set token="table">true</set>
+            <unset token="chart"></unset>
+            <unset token="use_case"></unset>
+          </condition>
+          <condition value="sankey">
+            <set token="use_case">true</set>
+            <unset token="chart"></unset>
+            <unset token="table"></unset>
+          </condition>
+        </change>
+        <default>table</default>
+      </input>
       <table depends="$table$">
         <title>Today's Ingest</title>
         <search>
-          <query>(index=_internal source=*license_usage* type=Usage) OR (index=search_profiling search_status=granted) $idx$ $st$ | eval idx=if(idx=="default","main",idx)| append [| inputlookup list_index_sourcetypes.csv | rename index AS idx, sourcetype AS st | search idx="$idx$" st="$st$" NOT idx="_*" | eval b=0 ]|stats sum(b) AS b, dc(search_id) AS search_count by st, idx | eventstats sum(b) AS today_total | eval [| rest splunk_server=local /services/licenser/pools | rename title AS Pool | search [rest splunk_server=local /services/licenser/groups | search is_active=1 | eval stack_id=stack_ids | fields stack_id] | eval search="quota="+tostring(if(isnull(effective_quota),quota,effective_quota))| table search] | eval perc_license_quota=round(100*b/quota,2) | search b&gt;0 NOT idx=_* | eval perc_daily_volume=round(100*b/today_total,2) | eval usage=case(b/1024&lt;=1,tostring(b)+" bytes",b/(1024*1024)&lt;=1,tostring(round(b/1024))+" KB",b/(1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024),2))+" MB",b/(1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024),2))+" GB",b/(1024*1024*1024*1024*1024)&lt;=1,tostring(round(b/(1024*1024*1024*1024),2))+" TB",1==1,"bogus") | table st idx usage perc* search_count | sort -perc_daily_volume</query>
-          <earliest>$timerange.earliest$</earliest>
-          <latest>$timerange.latest$</latest>
+          <query>index=search_profiling NOT datasource=_* | stats count AS search_count by datasource | join type=outer datasource [| inputlookup list_index_sourcetypes.csv | search NOT index=_* | lookup license_usage.csv data | rename 1 AS usage | eval quota=6.5*1024*1024*1024*1024 | eval perc_license_volume=round(100*usage/quota,2) | eval [|inputlookup lic_usage_summary.csv | tail 1 | return bytes] | eval perc_daily_volume=round(100*usage/bytes,2) |eval usage_GB=round(usage/1024/1024/1024,2) | table sourcetype index usage_GB perc*  | eval datasource=index+"@"+sourcetype ] | sort -perc_daily_volume  | table sourcetype index usage_GB perc* search_count</query>
+          <earliest>0</earliest>
+          <latest></latest>
         </search>
         <option name="count">10</option>
         <option name="refresh.display">progressbar</option>
@@ -137,14 +151,15 @@
           <scale type="minMidMax"></scale>
         </format>
         <drilldown>
-          <link target="_self">/app/SA-search_profiling/data_breakdown?form.idx=$row.idx$&amp;form.st=$row.st$</link>
+          <link target="_self">/app/SA-search_profiling/data_breakdown?form.idx=$row.index$&amp;form.st=$row.sourcetype$</link>
         </drilldown>
       </table>
       <viz depends="$chart$" type="treemap_app.treemap">
         <search>
-          <query>(index=_internal source=*license_usage* $idx$ $st$) OR (index=search_profiling $idx$ $st$) | eval idx=if(idx=="default","main",idx)| search $idx$ $st$ | stats sum(b) AS bytes, dc(search_id) AS search_count by idx,st | fillnull value=0 bytes| search bytes&gt;0 NOT idx=_*| table idx st bytes search_count</query>
-          <earliest>$timerange.earliest$</earliest>
-          <latest>$timerange.latest$</latest>
+          <query>index=search_profiling NOT datasource=_* | stats count AS search_count by datasource | join type=outer datasource [| inputlookup license_usage.csv | table data * | untable data day bytes | search day=1 | rename data AS datasource | table datasource bytes] | search NOT datasource=*@stash | rex field="datasource" "^(?&lt;idx&gt;[^@]+)@(?&lt;st&gt;.+)"  
+| eval GB=round(bytes/1024/1024/1024,2) | table idx st GB search_count</query>
+          <earliest>0</earliest>
+          <latest></latest>
           <sampleRatio>1</sampleRatio>
         </search>
         <option name="drilldown">all</option>
@@ -159,6 +174,33 @@
         <option name="treemap_app.treemap.showTooltip">true</option>
         <option name="treemap_app.treemap.useColors">true</option>
         <option name="treemap_app.treemap.useZoom">true</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <drilldown>
+          <link target="_self">/app/SA-search_profiling/data_breakdown?form.idx=$row.idx$&amp;form.st=$row.st$</link>
+        </drilldown>
+      </viz>
+      <viz depends="$use_case$" type="sankey_diagram_app.sankey_diagram">
+        <search>
+          <query>| inputlookup use_cases | search [| inputlookup data_sources | search $idx$ $st$ | mvexpand use_cases | table use_cases | rename use_cases AS title] | eval count=1 | rename category AS use_cases| table title use_cases count | append [| inputlookup data_sources | search $idx$ $st$ | mvexpand use_cases | eval count=1 | table title use_cases count ] | eval count=count*10</query>
+          <earliest>0</earliest>
+          <latest></latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="sankey_diagram_app.sankey_diagram.colorMode">sequential</option>
+        <option name="sankey_diagram_app.sankey_diagram.maxColor">#6db7c6</option>
+        <option name="sankey_diagram_app.sankey_diagram.minColor">#ffffff</option>
+        <option name="sankey_diagram_app.sankey_diagram.numOfBins">6</option>
+        <option name="sankey_diagram_app.sankey_diagram.showBackwards">false</option>
+        <option name="sankey_diagram_app.sankey_diagram.showLabels">true</option>
+        <option name="sankey_diagram_app.sankey_diagram.showLegend">false</option>
+        <option name="sankey_diagram_app.sankey_diagram.showSelf">false</option>
+        <option name="sankey_diagram_app.sankey_diagram.showTooltip">true</option>
+        <option name="sankey_diagram_app.sankey_diagram.styleBackwards">false</option>
+        <option name="sankey_diagram_app.sankey_diagram.useColors">true</option>
         <option name="trellis.enabled">0</option>
         <option name="trellis.scales.shared">1</option>
         <option name="trellis.size">medium</option>

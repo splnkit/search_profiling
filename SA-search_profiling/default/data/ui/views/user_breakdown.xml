@@ -40,7 +40,7 @@
       <title>Search Mode</title>
       <chart>
         <search>
-          <query>index="search_profiling" user="$user$" user_role="$roles$"| stats count by search_mode user | lookup sh3userdata.csv user OUTPUT role AS roles | search roles=*$roles$* | stats sum(count) by search_mode</query>
+          <query>index="search_profiling" user="$user$" user_role="$roles$"| stats count by search_mode user | stats sum(count) by search_mode</query>
           <earliest>$timerange.earliest$</earliest>
           <latest>$timerange.latest$</latest>
           <sampleRatio>1</sampleRatio>
